@@ -449,12 +449,26 @@ const app = Vue.createApp({
             const padding = 70;
             const stepX = validTrips.length > 1 ? (canvas.width - padding * 2) / (validTrips.length - 1) : 0;
             
-            const points = validTrips.map((trip, idx) => ({
-                x: validTrips.length === 1 ? canvas.width / 2 : padding + idx * stepX,
-                y: 120 + (idx % 2 === 0 ? -35 : 35), // Хвилеподібна лінія для візуальної виразності
-                title: trip.destination.split(',')[0],
-                dates: trip.startDay ? trip.startDay.slice(0, 5) : ''
-            }));
+            const points = validTrips.map((trip, idx) => {
+                // Отримання значення дати з усіх можливих полів
+                let val = trip.startDay || trip.startDate || trip.date || '';
+
+                // Очищення від "undef", "undefined", null тощо
+                let formattedDate = '';
+                if (val && typeof val === 'string') {
+                    let cleanVal = val.trim();
+                    if (cleanVal !== 'undef' && cleanVal !== 'undefined' && cleanVal !== 'null') {
+                        formattedDate = cleanVal.length >= 5 ? cleanVal.slice(0, 5) : cleanVal;
+                    }
+                }
+
+                return {
+                    x: validTrips.length === 1 ? canvas.width / 2 : padding + idx * stepX,
+                    y: 120 + (idx % 2 === 0 ? -35 : 35), // Хвилеподібна лінія для візуальної виразності
+                    title: trip.destination ? trip.destination.split(',')[0] : '',
+                    dates: formattedDate
+                };
+            });
 
             let progress = 0; // Початковий прогрес анімації (від 0 до 1)
 
@@ -509,8 +523,8 @@ const app = Vue.createApp({
                         ctx.textAlign = 'center';
                         ctx.fillText(pt.title, pt.x, pt.y - 16);
 
-                        // Дата поїздки під точкою
-                        if (pt.dates) {
+                        // Дата поїздки під точкою (малюється тільки якщо дата дійсно є і вона коректна)
+                        if (pt.dates && pt.dates !== 'undef' && pt.dates !== 'undefined') {
                             ctx.fillStyle = '#00a896';
                             ctx.font = '11px system-ui';
                             ctx.fillText(pt.dates, pt.x, pt.y + 20);
@@ -621,6 +635,10 @@ async function loadCountryData() {
         const countryCardData = {
             id: Date.now().toString(),
             destination: country.name?.common || searchQuery,
+            startDay: '',
+            endDay: '',
+            days: 0,
+            budget: 0,
             capital: (country.capital && country.capital.length > 0) ? country.capital[0] : 'Не вказано',
             population: country.population ? country.population : 0,
             imgSrc: country.flags?.png || country.flags?.svg || '',
